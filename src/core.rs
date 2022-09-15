@@ -10,7 +10,7 @@ pub const DISPLAY_BUFFER: usize = DISPLAY_HEIGHT * DISPLAY_WIDTH;
 pub struct CPU {
     memory: [u8; 4096],
     pc: usize,
-    stack: [usize; 16],
+    stack: [usize; 48],
     sp: usize,
     index_register: u16,
     pub delay_timer: u8,
@@ -28,7 +28,7 @@ impl CPU {
         let mut c = CPU {
             memory: [0; 4096],
             pc: 0, 
-            stack: [0; 16],
+            stack: [0; 48],
             sp: 0,
             index_register: 0,
             delay_timer: 0,
@@ -67,13 +67,8 @@ impl CPU {
     }
 
     pub fn load(&mut self, prog: Vec<u8>) {
-        // TODO: Is there a quick memcopy-esque way to get bytes into memory
-        let mut i = 0x200;
-        for b in prog {
-            self.memory[i] = b;
-            i += 1;
-        }
-        println!("Loaded {} bytes into memory", i);
+        self.memory[0x200..0x200+prog.len()].copy_from_slice(&prog.as_slice());
+        println!("Loaded {} bytes into memory", prog.len());
         self.pc = 0x200;
         println!("PC set to 0x200");
     }
@@ -324,33 +319,37 @@ impl CPU {
                 self.general_registers[a as usize] = t as u8;
             },
             SubAB(a, b) => {
-                let mut n = self.general_registers[a as usize] as i16;
-                let m = self.general_registers[b as usize] as i16;
-                if n > m {
+                let r = a;
+                let mut a = self.general_registers[a as usize] as i16;
+                let b = self.general_registers[b as usize] as i16;
+                if a > b {
                     self.general_registers[0xF] = 1;
                 } else {
-                    n += 256;
+                    self.general_registers[0xF] = 0;
+                    a += 256;
                 }
-                self.general_registers[a as usize] = (n - m) as u8;
+                self.general_registers[r as usize] = (a - b) as u8;
             },
             SubBA(a, b) => {
-                let n = self.general_registers[a as usize] as i16;
-                let mut m = self.general_registers[b as usize] as i16;
-                if m > n {
+                let r = a;
+                let a = self.general_registers[a as usize] as i16;
+                let mut b = self.general_registers[b as usize] as i16;
+                if b > a {
                     self.general_registers[0xF] = 1;
                 } else {
-                    m += 256;
+                    self.general_registers[0xF] = 0;
+                    b += 256;
                 }
-                self.general_registers[a as usize] = (m - n) as u8;
+                self.general_registers[r as usize] = (b - a) as u8;
             },
             ShiftRightRR(a, _) => {
                 let outbit = self.general_registers[a as usize] & 0x01;
-                self.general_registers[0xF] = outbit;
+                self.general_registers[0xF] = if outbit > 0 {1} else {0};
                 self.general_registers[a as usize] = self.general_registers[a as usize] >> 1;
             },
             ShiftLeftRR(a, _) => {
                 let outbit = self.general_registers[a as usize] & 0x80;
-                self.general_registers[0xF] = outbit;
+                self.general_registers[0xF] = if outbit > 0 {1} else {0};
                 self.general_registers[a as usize] = self.general_registers[a as usize] << 1;
             },
             JumpOffset(offset) => {

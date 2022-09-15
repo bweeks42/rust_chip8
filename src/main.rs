@@ -10,7 +10,7 @@ use piston_window::PistonWindow;
 use crate::core::{DISPLAY_HEIGHT, DISPLAY_WIDTH, CPU};
 use std::{fs::read, time::{SystemTime, Duration}};
 
-const IPS: u64 = 150;
+const IPS: u64 = 700;
 
 fn main() {
     let mut cpu = CPU::new();
